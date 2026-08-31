@@ -357,6 +357,7 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     showMoney:     true,          // Verdienst in der App anzeigen
     reportMoney:   false,         // Verdienst standardmässig mitschicken
     defaultHours:  1,             // Std. pro Klasse beim Hinzufügen
+    slots:         ['19:00','20:00','21:00'], // die drei Unterrichtszeiten
     activeLevels:  ALL_LEVEL_IDS, // sichtbare Klassen im Schnellwähler
     reportDays:    true,          // Tagesliste im Bericht
     reportLevels:  true,          // Level-Aufschlüsselung im Bericht
@@ -396,9 +397,25 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     return item.custom && item.custom.trim() ? item.custom.trim() : 'Extra';
   }
 
+  /* ─── Unterrichtszeiten ──────────────────── */
+  /** '19:00' → '19', '19:30' → '19:30'; ohne Zeit → '' */
+  function slotShort(t) {
+    if (!t) return '';
+    return t.endsWith(':00') ? t.slice(0,2) : t;
+  }
+  /** Sortiert nach Uhrzeit; Einträge ohne Zeit ans Ende */
+  function sortItems(list) {
+    return list.slice().sort((a,b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  }
+  /** Erste noch freie Unterrichtszeit des Tages, sonst '' */
+  function nextFreeSlot(items, slots) {
+    const used = items.map(i => i.time).filter(Boolean);
+    return (slots || []).find(s => !used.includes(s)) || '';
+  }
+
   function entryItems(entry) {
     if (!entry || !Array.isArray(entry.items)) return [];
-    return entry.items;
+    return sortItems(entry.items);
   }
   function entryHours(entry) {
     return entryItems(entry).reduce((s, it) => s + (Number(it.hours) || 0), 0);
@@ -462,10 +479,13 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
         if (!Array.isArray(merged.activeLevels) || merged.activeLevels.length === 0) {
           merged.activeLevels = ALL_LEVEL_IDS;
         }
+        if (!Array.isArray(merged.slots) || merged.slots.length !== 3) {
+          merged.slots = [...DEFAULT_SETTINGS.slots];
+        }
         return merged;
       }
     } catch {}
-    return { ...DEFAULT_SETTINGS, activeLevels: [...ALL_LEVEL_IDS] };
+    return { ...DEFAULT_SETTINGS, activeLevels: [...ALL_LEVEL_IDS], slots: [...DEFAULT_SETTINGS.slots] };
   }
 
   /* ─── Share / Clipboard ──────────────────── */
@@ -517,7 +537,11 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
       L.push('');
       L.push(m == null ? 'Tage' : 'Einträge');
       days.forEach(d => {
-        const names = d.items.map(it => `${itemLabel(it)}${(Number(it.hours)||0) !== 1 ? ` (${fmtHours(it.hours)}h)` : ''}`).join(', ');
+        const names = d.items.map(it => {
+          const t   = it.time ? `${slotShort(it.time)} ` : '';
+          const dur = (Number(it.hours)||0) !== 1 ? ` (${fmtHours(it.hours)}h)` : '';
+          return `${t}${itemLabel(it)}${dur}`;
+        }).join(', ');
         L.push(`${pad(d.date.getDate())}.${pad(d.date.getMonth()+1)}.  ${fmtHours(d.hours)} Std.  ${names}`);
         if (d.entry.note) L.push(`         ↳ ${d.entry.note}`);
       });
@@ -545,7 +569,7 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
   }
 
   /* ─── Demodaten ──────────────────────────── */
-  function generateDemoData(today) {
+  function generateDemoData(today, slots = DEFAULT_SETTINGS.slots) {
     let x = 424242;
     const rnd = () => (x = (x * 9301 + 49297) % 233280) / 233280;
     const pool = ['beg1','beg2','beg3','begint1','begint2','begint3','int1','int2','adv1','master'];
@@ -561,7 +585,7 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
           let lv = pool[Math.floor(rnd() * pool.length)];
           if (used.includes(lv)) continue;
           used.push(lv);
-          items.push({ id: newId(), level: lv, hours: 1 });
+          items.push({ id: newId(), level: lv, hours: 1, time: slots[items.length] || '' });
         }
         if (items.length) {
           entries[dateKey(cur.getFullYear(), cur.getMonth(), cur.getDate())] = { items, note:'' };
@@ -572,9 +596,9 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     const lastKey = dateKey(today.getFullYear(), today.getMonth(), Math.min(today.getDate(), daysInMonth(today.getFullYear(), today.getMonth())));
     entries[lastKey] = {
       items: [
-        { id:newId(), level:'beg1',    hours:1 },
-        { id:newId(), level:'begint2', hours:1 },
-        { id:newId(), custom:'Extra für Bluetoothgeräte', hours:1 },
+        { id:newId(), level:'beg1',    hours:1, time:slots[0] || '' },
+        { id:newId(), level:'begint2', hours:1, time:slots[1] || '' },
+        { id:newId(), custom:'Extra für Bluetoothgeräte', hours:1, time:'' },
       ],
       note: '',
     };
@@ -827,6 +851,31 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     );
   }
 
+  function TimeInput({ value, onChange }) {
+    function fmt(str) {
+      let v = str.replace(/[^0-9:]/g,'');
+      if (v.length === 4 && !v.includes(':')) v = v.slice(0,2) + ':' + v.slice(2);
+      return v.slice(0,5);
+    }
+    return (
+      <input type="text" inputMode="numeric" maxLength={5} value={value}
+        onChange={e => onChange(fmt(e.target.value))}
+        onBlur={e => {
+          // '19' → '19:00', Unvollständiges auffüllen
+          const v = e.target.value;
+          const m = v.match(/^(\d{1,2})(?::(\d{0,2}))?$/);
+          if (m) onChange(`${pad(Math.min(23, Number(m[1])))}:${pad(Math.min(59, Number(m[2] || 0)))}`);
+        }}
+        style={{
+          width:'4.6ch', border:'none', borderBottom:'1.5px solid var(--line-2)',
+          background:'transparent', textAlign:'center',
+          fontSize:14, fontFamily:'inherit', fontWeight:500,
+          padding:'2px 0', outline:'none', color:'var(--ink)',
+          fontVariantNumeric:'tabular-nums', letterSpacing:'0.01em',
+        }}/>
+    );
+  }
+
   function SRow({ label, sub, right, onClick, chevron, danger }) {
     return (
       <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 0', cursor:onClick?'pointer':'default', borderBottom:'1px solid var(--line)' }}>
@@ -996,9 +1045,12 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
               <div>
                 {items.map(it => (
                   <div key={it.id} onClick={() => onOpenDay(tk)} className="row-tap" style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 8px', borderBottom:'1px solid var(--line)', cursor:'pointer' }}>
+                    <span className="tnum" style={{ width:44, flexShrink:0, fontSize:13, fontWeight:500, color: it.time ? 'var(--ink-2)' : 'var(--ink-4)' }}>
+                      {it.time || '—'}
+                    </span>
                     <span style={{ width:8, height:8, borderRadius:99, background:itemColor(it), flexShrink:0 }}/>
                     <span style={{ flex:1, fontSize:14, fontWeight:500, letterSpacing:'-0.01em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{itemLabel(it)}</span>
-                    <span className="tnum" style={{ fontSize:13, color:'var(--ink-2)' }}>{fmtHours(it.hours)} h</span>
+                    <span className="tnum" style={{ fontSize:13, color:'var(--ink-3)' }}>{fmtHours(it.hours)} Std.</span>
                   </div>
                 ))}
               </div>
@@ -1225,7 +1277,10 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
                             background: it.level ? hexToRgba(LEVEL_MAP[it.level].color, 0.12) : 'var(--line)',
                             color: it.level ? hexToRgba(LEVEL_MAP[it.level].color, 1) : 'var(--ink-2)',
                             maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                          }}>{itemLabel(it)}</span>
+                          }}>
+                            {it.time && <span style={{ opacity:0.65, marginRight:4 }} className="tnum">{slotShort(it.time)}</span>}
+                            {itemLabel(it)}
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -1257,25 +1312,27 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     function toggleLevel(lv) {
       setItems(list => list.some(it => it.level === lv)
         ? list.filter(it => it.level !== lv)
-        : [...list, { id:newId(), level:lv, hours:s.defaultHours }]);
+        : sortItems([...list, { id:newId(), level:lv, hours:s.defaultHours, time:nextFreeSlot(list, s.slots) }]));
     }
     function setHours(id, h) {
       setItems(list => list.map(it => it.id === id ? { ...it, hours:h } : it));
+    }
+    function setTime(id, t) {
+      setItems(list => sortItems(list.map(it => it.id === id ? { ...it, time:t } : it)));
     }
     function setCustom(id, text) {
       setItems(list => list.map(it => it.id === id ? { ...it, custom:text } : it));
     }
     function removeItem(id) { setItems(list => list.filter(it => it.id !== id)); }
     function addCustom() {
-      setItems(list => [...list, { id:newId(), custom:'', hours:s.defaultHours }]);
+      setItems(list => sortItems([...list, { id:newId(), custom:'', hours:s.defaultHours, time:'' }]));
     }
 
     function save() {
-      const clean = items
-        .filter(it => (Number(it.hours) || 0) > 0)
+      const clean = sortItems(items.filter(it => (Number(it.hours) || 0) > 0))
         .map(it => it.level
-          ? { id:it.id, level:it.level, hours:+Number(it.hours).toFixed(2) }
-          : { id:it.id, custom:(it.custom || '').trim() || 'Extra', hours:+Number(it.hours).toFixed(2) });
+          ? { id:it.id, level:it.level, hours:+Number(it.hours).toFixed(2), time:it.time || '' }
+          : { id:it.id, custom:(it.custom || '').trim() || 'Extra', hours:+Number(it.hours).toFixed(2), time:it.time || '' });
 
       const entries = { ...state.entries };
       const existed = state.entries[dk] !== undefined;
@@ -1327,24 +1384,55 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
             {items.length > 0 && (
               <div className="fade-up" style={{ animationDelay:'0.1s', marginBottom:22 }}>
                 <div className="kicker" style={{ marginBottom:8 }}>Lektionen</div>
-                {items.map(it => (
-                  <div key={it.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:'1px solid var(--line)' }}>
-                    <span style={{ width:8, height:8, borderRadius:99, background:itemColor(it), flexShrink:0 }}/>
-                    {it.level ? (
-                      <span style={{ flex:1, fontSize:14, fontWeight:500, letterSpacing:'-0.01em', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {itemLabel(it)}
-                      </span>
-                    ) : (
-                      <input value={it.custom} onChange={e => setCustom(it.id, e.target.value)}
-                        placeholder="z.B. Extra für Bluetoothgeräte"
-                        style={{ flex:1, minWidth:0, border:'none', borderBottom:'1px solid var(--line-2)', background:'transparent',
-                          fontSize:14, fontWeight:500, letterSpacing:'-0.01em', outline:'none', padding:'2px 0', color:'var(--ink)' }}/>
-                    )}
-                    <Stepper value={Number(it.hours)||0} onChange={v => setHours(it.id, v)}
-                      step={0.5} min={0} max={24} decimals={1} suffix=" h" width={52}/>
-                    <button className="entry-del" onClick={() => removeItem(it.id)}>×</button>
-                  </div>
-                ))}
+                {items.map(it => {
+                  const taken = items.filter(o => o.id !== it.id).map(o => o.time).filter(Boolean);
+                  return (
+                    <div key={it.id} style={{ padding:'10px 0', borderBottom:'1px solid var(--line)' }}>
+                      {/* Zeile 1: Klasse */}
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ width:8, height:8, borderRadius:99, background:itemColor(it), flexShrink:0 }}/>
+                        {it.level ? (
+                          <span style={{ flex:1, fontSize:14, fontWeight:500, letterSpacing:'-0.01em', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {itemLabel(it)}
+                          </span>
+                        ) : (
+                          <input value={it.custom} onChange={e => setCustom(it.id, e.target.value)}
+                            placeholder="z.B. Extra für Bluetoothgeräte"
+                            style={{ flex:1, minWidth:0, border:'none', borderBottom:'1px solid var(--line-2)', background:'transparent',
+                              fontSize:14, fontWeight:500, letterSpacing:'-0.01em', outline:'none', padding:'2px 0', color:'var(--ink)' }}/>
+                        )}
+                        <button className="entry-del" onClick={() => removeItem(it.id)}>×</button>
+                      </div>
+                      {/* Zeile 2: Uhrzeit + Dauer */}
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:8, paddingLeft:18 }}>
+                        <div style={{ display:'flex', gap:4, flex:1, minWidth:0 }}>
+                          {s.slots.map(t => {
+                            const on   = it.time === t;
+                            const busy = taken.includes(t);
+                            return (
+                              <button key={t} type="button" onClick={() => setTime(it.id, on ? '' : t)}
+                                title={busy ? 'schon belegt' : undefined}
+                                style={{
+                                  appearance:'none', cursor:'pointer', fontFamily:'inherit',
+                                  fontSize:12.5, fontWeight:500, fontVariantNumeric:'tabular-nums',
+                                  padding:'6px 9px', borderRadius:8,
+                                  border:`1px solid ${on ? 'transparent' : 'var(--line-2)'}`,
+                                  background: on ? 'var(--ink)' : 'var(--surface)',
+                                  color: on ? 'var(--bg)' : (busy ? 'var(--ink-4)' : 'var(--ink-2)'),
+                                  transition:'all 0.15s var(--tap)',
+                                }}>{slotShort(t)}</button>
+                            );
+                          })}
+                          <span style={{ fontSize:11, color:'var(--ink-3)', alignSelf:'center', marginLeft:2 }}>
+                            {it.time ? 'Uhr' : 'ohne Zeit'}
+                          </span>
+                        </div>
+                        <Stepper value={Number(it.hours)||0} onChange={v => setHours(it.id, v)}
+                          step={0.5} min={0} max={24} decimals={1} suffix=" h" width={48}/>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -1553,7 +1641,7 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     }
     function loadDemo() {
       if (confirm('Beispieldaten laden? Ersetzt alle aktuellen Einträge.')) {
-        setState(st => ({ ...st, entries: generateDemoData(st.today) }));
+        setState(st => ({ ...st, entries: generateDemoData(st.today, st.settings.slots) }));
       }
     }
 
@@ -1574,6 +1662,15 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
           </SettingsGroup>
 
           <SettingsGroup label="Unterricht" delay={0.04}>
+            <SRow label="Unterrichtszeiten" sub="werden beim Eintragen der Reihe nach vergeben" right={
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                {[0,1,2].map(i => (
+                  <TimeInput key={i} value={s.slots[i] || ''} onChange={v => {
+                    const next = [...s.slots]; next[i] = v; setS('slots', next);
+                  }}/>
+                ))}
+              </div>
+            }/>
             <SRow label="Standard pro Klasse" sub="Stunden beim Hinzufügen" right={
               <Stepper value={s.defaultHours} onChange={v => setS('defaultHours', v)} step={0.5} min={0.5} max={8} decimals={1} suffix=" h" width={52}/>
             }/>
@@ -1685,10 +1782,14 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
       const label    = LEVEL_MAP[level] ? LEVEL_MAP[level].label : level;
       let msg;
       if (idx >= 0) { items.splice(idx, 1); msg = `${label} entfernt`; }
-      else { items.push({ id:newId(), level, hours:state.settings.defaultHours }); msg = `${label} eingetragen`; }
+      else {
+        const time = nextFreeSlot(items, state.settings.slots);
+        items.push({ id:newId(), level, hours:state.settings.defaultHours, time });
+        msg = time ? `${label} · ${slotShort(time)} Uhr` : `${label} eingetragen`;
+      }
 
       const entries = { ...state.entries };
-      if (items.length || (entry && entry.note)) entries[dk] = { items, note:(entry && entry.note) || '' };
+      if (items.length || (entry && entry.note)) entries[dk] = { items:sortItems(items), note:(entry && entry.note) || '' };
       else delete entries[dk];
       if (!items.length && !(entry && entry.note)) delete entries[dk];
 
