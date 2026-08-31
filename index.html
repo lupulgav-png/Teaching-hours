@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Unterricht" />
+  <meta name="theme-color" content="#FAFAF7" />
+  <title>Unterricht</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+/* ─── Tokens ───────────────────────────────────────── */
+:root {
+  --bg:          #FAFAF7;
+  --surface:     #FFFFFF;
+  --ink:         #0E0E0C;
+  --ink-2:       #525048;
+  --ink-3:       #8C8A82;
+  --ink-4:       #C2BFB6;
+  --line:        #ECEAE3;
+  --line-2:      #DCD9D0;
+  --accent:      #C25C2E;
+  --accent-soft: #F8EDE3;
+  --positive:    #14532D;
+  --negative:    #B23A1B;
+
+  --font: "Inter Tight", "Inter", -apple-system, system-ui, sans-serif;
+  --mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  --tap:    cubic-bezier(0.2, 0, 0, 1);
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  font-family: var(--font);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  color: var(--ink);
+  height: 100%;
+  overflow: hidden;
+}
+input, textarea, button, select { font-family: inherit; color: inherit; }
+
+/* ─── Layout ────────────────────────────────────────── */
+#root {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  margin: 0 auto;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.screen-wrap {
+  flex: 1; min-height: 0;
+  position: relative; overflow: hidden;
+}
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.scroll {
+  flex: 1; overflow-y: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll::-webkit-scrollbar { display: none; }
+
+/* ─── Typography ────────────────────────────────────── */
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.kicker {
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.label-lg {
+  font-size: 32px; font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.muted   { color: var(--ink-3); }
+.muted-2 { color: var(--ink-2); }
+
+/* ─── Animations ────────────────────────────────────── */
+@keyframes hairFromCenter {
+  from { transform: scaleX(0); } to { transform: scaleX(1); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); } to { transform: translateY(0); }
+}
+@keyframes screenEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.995); filter: blur(2px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+
+.fade-up    { animation: fadeUp    0.5s var(--spring) both; }
+.fade-in    { animation: fadeIn    0.6s var(--spring) both; }
+.scale-in   { animation: scaleIn   0.6s var(--spring) both; }
+.screen-enter { animation: screenEnter 0.4s var(--spring) both; }
+
+/* ─── Dividers ──────────────────────────────────────── */
+.hair          { height: 1px; background: var(--line); }
+.hair-strong   { background: var(--line-2); }
+
+/* ─── TopBar ────────────────────────────────────────── */
+.topbar {
+  padding: calc(env(safe-area-inset-top, 20px) + 14px) 22px 18px;
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 16px;
+  flex-shrink: 0;
+}
+.topbar-title { min-width: 0; flex: 1; }
+.topbar-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* ─── Tab bar ────────────────────────────────────────── */
+.tabbar {
+  position: relative;
+  padding: 8px 8px env(safe-area-inset-bottom, 8px);
+  display: flex; align-items: center; justify-content: space-around;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+  z-index: 20;
+}
+.tab {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 2px 4px;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color 0.2s var(--tap);
+  position: relative;
+  user-select: none;
+  background: none; border: none; outline: none;
+}
+.tab[aria-current="true"] { color: var(--ink); }
+.tab-icon {
+  display: flex; align-items: center; justify-content: center;
+  color: inherit;
+}
+.tab-indicator {
+  position: absolute;
+  top: 0; height: 1.5px;
+  background: var(--ink);
+  border-radius: 1px;
+  transition: left 0.45s var(--spring), width 0.45s var(--spring);
+  pointer-events: none;
+}
+
+/* ─── Buttons ────────────────────────────────────────── */
+.btn {
+  appearance: none; border: none; cursor: pointer; background: transparent;
+  padding: 12px 18px; font-family: inherit; font-size: 14px; font-weight: 500;
+  letter-spacing: -0.01em;
+  border-radius: 10px;
+  transition: background 0.15s var(--tap), color 0.15s var(--tap), transform 0.1s var(--tap);
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--ink); color: var(--bg); }
+.btn-primary:active { background: var(--ink-2); }
+.btn-ghost { color: var(--ink-2); }
+.btn-ghost:hover { color: var(--ink); }
+.btn-soft { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.btn-soft:active { background: var(--line); }
+.btn-icon {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; color: var(--ink-2);
+}
+.btn-icon:active { background: var(--line); }
+
+/* ─── Card ───────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.card > *:last-child { border-bottom: none !important; }
+
+/* ─── Row tap ────────────────────────────────────────── */
+.row-tap {
+  cursor: pointer; transition: background 0.15s var(--tap);
+  margin: 0 -8px; padding: 0 8px; border-radius: 8px;
+}
+.row-tap:active { background: var(--line); }
+
+/* ─── Toggle ─────────────────────────────────────────── */
+.toggle {
+  width: 44px; height: 26px; border-radius: 999px;
+  background: var(--line-2);
+  position: relative; cursor: pointer;
+  transition: background 0.25s var(--tap);
+  border: none; padding: 0; flex-shrink: 0;
+}
+.toggle[aria-checked="true"] { background: var(--ink); }
+.toggle::after {
+  content: ""; position: absolute;
+  top: 3px; left: 3px; width: 20px; height: 20px;
+  background: #fff; border-radius: 50%;
+  transition: transform 0.3s var(--spring);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+.toggle[aria-checked="true"]::after { transform: translateX(18px); }
+
+/* ─── Sheet ──────────────────────────────────────────── */
+.sheet-backdrop {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.32);
+  animation: fadeIn 0.25s var(--spring) both;
+}
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 51;
+  background: var(--bg);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.16);
+  animation: slideUp 0.4s var(--spring) both;
+  max-height: 94%;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sheet-handle {
+  width: 36px; height: 4px; border-radius: 99px;
+  background: var(--ink-4);
+  margin: 8px auto 4px;
+  flex-shrink: 0;
+}
+
+/* ─── Entry delete button ────────────────────────────── */
+.entry-del {
+  appearance: none; border: none; background: none; cursor: pointer;
+  padding: 6px 8px; color: var(--ink-3); font-size: 18px; line-height: 1;
+  border-radius: 6px; transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.entry-del:hover, .entry-del:active { color: var(--negative); background: var(--line); }
+
+/* ─── Calendar cell ──────────────────────────────────── */
+.cal-cell {
+  position: relative; cursor: pointer;
+  padding: 10px 0 12px;
+  text-align: center;
+  border-radius: 10px;
+  transition: background 0.15s var(--tap);
+}
+.cal-cell:active { background: var(--line); }
+
+/* ─── Level chip ─────────────────────────────────────── */
+.chip {
+  appearance: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 9px 4px;
+  border-radius: 9px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: background 0.18s var(--tap), color 0.18s var(--tap),
+              border-color 0.18s var(--tap), transform 0.1s var(--tap);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chip:active { transform: scale(0.96); }
+.chip[aria-pressed="true"] { color: #fff; border-color: transparent; }
+
+/* ─── Report preview ─────────────────────────────────── */
+.report-pre {
+  font-family: var(--mono);
+  font-size: 11.5px; line-height: 1.65;
+  white-space: pre-wrap; word-break: break-word;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  max-height: 320px; overflow-y: auto;
+  scrollbar-width: none;
+}
+.report-pre::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel auf 7.x gepinnt: Babel 8 erzeugt mit dem React-Preset ESM-Imports,
+       die in einem klassischen <script> nicht laufen. -->
+  <script src="https://unpkg.com/@babel/standalone@^7.26.0/babel.min.js"></script>
+
+  <script type="text/babel" data-presets="react">
+  /* @jsxRuntime classic */
+  /* @jsx React.createElement */
+  'use strict';
+  const { useEffect, useRef, useState, useMemo, useLayoutEffect } = React;
+
+  /* ═══════════════════════════════════════════
+     CONSTANTS
+  ═══════════════════════════════════════════ */
+  const LS_DATA     = 'unterricht_v1';
+  const LS_SETTINGS = 'unt-settings';
+
+  /* ─── Levels ─────────────────────────────── */
+  const GROUPS = [
+    { id:'beg',    name:'Beginner',           short:'Beg',    color:'#7D9A6E' },
+    { id:'begint', name:'Beginner–Int.',      short:'BegInt', color:'#4E8C8A' },
+    { id:'int',    name:'Intermediate',       short:'Int',    color:'#3F6E9E' },
+    { id:'intadv', name:'Int.–Advanced',      short:'IntAdv', color:'#7A5EA6' },
+    { id:'adv',    name:'Advanced',           short:'Adv',    color:'#C25C2E' },
+    { id:'master', name:'Master',             short:'Master', color:'#0E0E0C', single:true },
+  ];
+
+  const LEVELS = [];
+  GROUPS.forEach(g => {
+    if (g.single) {
+      LEVELS.push({ id:g.id, label:g.short, group:g.id, color:g.color, alpha:1 });
+    } else {
+      [1,2,3].forEach(n => LEVELS.push({
+        id: `${g.id}${n}`, label: `${g.short} ${n}`,
+        group: g.id, color: g.color, alpha: [0.55, 0.78, 1][n-1],
+      }));
+    }
+  });
+  const LEVEL_MAP = {};
+  LEVELS.forEach(l => { LEVEL_MAP[l.id] = l; });
+  const ALL_LEVEL_IDS = LEVELS.map(l => l.id);
+
+  const DEFAULT_SETTINGS = {
+    rate:          30,
+    currency:      'CHF',
+    showMoney:     true,          // Verdienst in der App anzeigen
+    reportMoney:   false,         // Verdienst standardmässig mitschicken
+    defaultHours:  1,             // Std. pro Klasse beim Hinzufügen
+    activeLevels:  ALL_LEVEL_IDS, // sichtbare Klassen im Schnellwähler
+    reportDays:    true,          // Tagesliste im Bericht
+    reportLevels:  true,          // Level-Aufschlüsselung im Bericht
+  };
+
+  /* ═══════════════════════════════════════════
+     UTILS
+  ═══════════════════════════════════════════ */
+  const DE_MONTHS_FULL = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  const DE_MONTHS_ABBR = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const DE_WD_FULL  = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const DE_WD_SHORT = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+
+  const pad      = n => String(n).padStart(2,'0');
+  const dateKey  = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`;
+  const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+  const daysInMonth = (y, m) => new Date(y, m+1, 0).getDate();
+
+  let idSeq = 0;
+  const newId = () => `i${Date.now().toString(36)}${(idSeq++).toString(36)}`;
+
+  function hexToRgba(hex, a) {
+    let h = hex.replace('#','');
+    if (h.length === 3) h = h.split('').map(c => c+c).join('');
+    const n = parseInt(h, 16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+  function levelColor(id) {
+    const l = LEVEL_MAP[id];
+    return l ? hexToRgba(l.color, l.alpha) : 'var(--ink-4)';
+  }
+  function itemColor(item) {
+    return item.level ? levelColor(item.level) : 'var(--ink-4)';
+  }
+  function itemLabel(item) {
+    if (item.level) return LEVEL_MAP[item.level] ? LEVEL_MAP[item.level].label : item.level;
+    return item.custom && item.custom.trim() ? item.custom.trim() : 'Extra';
+  }
+
+  function entryItems(entry) {
+    if (!entry || !Array.isArray(entry.items)) return [];
+    return entry.items;
+  }
+  function entryHours(entry) {
+    return entryItems(entry).reduce((s, it) => s + (Number(it.hours) || 0), 0);
+  }
+
+  /** Alle Tage eines Zeitraums, aufsteigend. range = {y, m} oder {y} */
+  function daysInRange(entries, y, m) {
+    return Object.keys(entries)
+      .map(k => ({ key:k, date:parseKey(k), entry:entries[k] }))
+      .filter(x => x.date.getFullYear() === y && (m == null || x.date.getMonth() === m))
+      .map(x => ({ ...x, items: entryItems(x.entry), hours: entryHours(x.entry) }))
+      .filter(x => x.items.length > 0)
+      .sort((a,b) => a.date - b.date);
+  }
+
+  function rangeTotal(entries, y, m) {
+    return daysInRange(entries, y, m).reduce((s, d) => s + d.hours, 0);
+  }
+
+  /** Stunden + Lektionen je Level, absteigend nach Stunden */
+  function levelBreakdown(entries, y, m) {
+    const acc = {};
+    daysInRange(entries, y, m).forEach(d => {
+      d.items.forEach(it => {
+        const key = it.level || `custom:${itemLabel(it)}`;
+        if (!acc[key]) acc[key] = { key, label:itemLabel(it), color:itemColor(it), hours:0, count:0, isLevel:!!it.level };
+        acc[key].hours += Number(it.hours) || 0;
+        acc[key].count += 1;
+      });
+    });
+    const order = {};
+    ALL_LEVEL_IDS.forEach((id, i) => { order[id] = i; });
+    return Object.values(acc).sort((a,b) => {
+      if (a.isLevel !== b.isLevel) return a.isLevel ? -1 : 1;
+      if (a.isLevel) return order[a.key] - order[b.key];
+      return b.hours - a.hours;
+    });
+  }
+
+  function fmtHours(h) {
+    if (!h) return '0';
+    const sign = h < 0 ? '−' : '';
+    h = Math.abs(h);
+    const fixed = h.toFixed(1);
+    return sign + (fixed.endsWith('.0') ? fixed.slice(0,-2) : fixed);
+  }
+  function fmtMoney(n) {
+    const sign = n < 0 ? '−' : '';
+    return sign + Math.abs(n).toLocaleString('de-CH', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+
+  /* ─── Persistence ────────────────────────── */
+  function loadEntries() {
+    try { return JSON.parse(localStorage.getItem(LS_DATA)) || {}; } catch { return {}; }
+  }
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(LS_SETTINGS));
+      if (s) {
+        const merged = { ...DEFAULT_SETTINGS, ...s };
+        if (!Array.isArray(merged.activeLevels) || merged.activeLevels.length === 0) {
+          merged.activeLevels = ALL_LEVEL_IDS;
+        }
+        return merged;
+      }
+    } catch {}
+    return { ...DEFAULT_SETTINGS, activeLevels: [...ALL_LEVEL_IDS] };
+  }
+
+  /* ─── Share / Clipboard ──────────────────── */
+  function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+    done(ok ? 'In Zwischenablage kopiert' : 'Kopieren nicht möglich');
+  }
+  function copyText(text, done) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => done('In Zwischenablage kopiert'))
+        .catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  async function shareText(text, title, done) {
+    if (navigator.share) {
+      try { await navigator.share({ title, text }); done('Geteilt'); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    copyText(text, done);
+  }
+
+  /* ─── Bericht-Text ───────────────────────── */
+  function buildReport(state, y, m, opts) {
+    const s = state.settings;
+    const days  = daysInRange(state.entries, y, m);
+    const total = days.reduce((acc, d) => acc + d.hours, 0);
+    const lessons = days.reduce((acc, d) => acc + d.items.length, 0);
+    const title = m == null ? `${y}` : `${DE_MONTHS_FULL[m]} ${y}`;
+
+    const L = [];
+    L.push(`Unterricht · ${title}`);
+    L.push('─'.repeat(Math.max(16, title.length + 13)));
+    L.push(`Gesamt: ${fmtHours(total)} Std.`);
+    L.push(`${days.length} ${days.length === 1 ? 'Tag' : 'Tage'} · ${lessons} ${lessons === 1 ? 'Lektion' : 'Lektionen'}`);
+    if (opts.money && s.rate > 0) L.push(`Verdienst: ${fmtMoney(total * s.rate)} ${s.currency}`);
+
+    if (opts.days && days.length) {
+      L.push('');
+      L.push(m == null ? 'Tage' : 'Einträge');
+      days.forEach(d => {
+        const names = d.items.map(it => `${itemLabel(it)}${(Number(it.hours)||0) !== 1 ? ` (${fmtHours(it.hours)}h)` : ''}`).join(', ');
+        L.push(`${pad(d.date.getDate())}.${pad(d.date.getMonth()+1)}.  ${fmtHours(d.hours)} Std.  ${names}`);
+        if (d.entry.note) L.push(`         ↳ ${d.entry.note}`);
+      });
+    }
+
+    if (opts.levels) {
+      const bd = levelBreakdown(state.entries, y, m);
+      if (bd.length) {
+        L.push('');
+        L.push('Nach Level');
+        bd.forEach(b => L.push(`• ${b.label} — ${fmtHours(b.hours)} Std. (${b.count}×)`));
+      }
+    }
+
+    if (m == null) {
+      const months = [];
+      for (let i = 0; i < 12; i++) {
+        const h = rangeTotal(state.entries, y, i);
+        if (h > 0) months.push(`• ${DE_MONTHS_FULL[i]} — ${fmtHours(h)} Std.`);
+      }
+      if (months.length) { L.push(''); L.push('Nach Monat'); L.push(...months); }
+    }
+
+    return L.join('\n');
+  }
+
+  /* ─── Demodaten ──────────────────────────── */
+  function generateDemoData(today) {
+    let x = 424242;
+    const rnd = () => (x = (x * 9301 + 49297) % 233280) / 233280;
+    const pool = ['beg1','beg2','beg3','begint1','begint2','begint3','int1','int2','adv1','master'];
+    const entries = {};
+    const cur = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+    while (cur <= today) {
+      const wd = cur.getDay();
+      if ((wd === 1 || wd === 3 || wd === 5) && rnd() > 0.25) {
+        const n = 2 + Math.floor(rnd() * 2);
+        const items = [];
+        const used = [];
+        for (let i = 0; i < n; i++) {
+          let lv = pool[Math.floor(rnd() * pool.length)];
+          if (used.includes(lv)) continue;
+          used.push(lv);
+          items.push({ id: newId(), level: lv, hours: 1 });
+        }
+        if (items.length) {
+          entries[dateKey(cur.getFullYear(), cur.getMonth(), cur.getDate())] = { items, note:'' };
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    const lastKey = dateKey(today.getFullYear(), today.getMonth(), Math.min(today.getDate(), daysInMonth(today.getFullYear(), today.getMonth())));
+    entries[lastKey] = {
+      items: [
+        { id:newId(), level:'beg1',    hours:1 },
+        { id:newId(), level:'begint2', hours:1 },
+        { id:newId(), custom:'Extra für Bluetoothgeräte', hours:1 },
+      ],
+      note: '',
+    };
+    return entries;
+  }
+
+  /* ═══════════════════════════════════════════
+     SHARED COMPONENTS
+  ═══════════════════════════════════════════ */
+  function RollingNumber({ value, duration = 700, format = v => Math.round(v).toString() }) {
+    const [display, setDisplay] = useState(value);
+    const startRef = useRef(0);
+    const rafRef   = useRef();
+    useEffect(() => {
+      startRef.current = performance.now();
+      const from = display, to = value;
+      function tick(t) {
+        const p = Math.min(1, (t - startRef.current) / duration);
+        const e = 1 - Math.pow(1 - p, 3);
+        setDisplay(from + (to - from) * e);
+        if (p < 1) rafRef.current = requestAnimationFrame(tick);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(rafRef.current);
+    }, [value]);
+    return <>{format(display)}</>;
+  }
+
+  function HeroHours({ value, size = 144 }) {
+    return (
+      <span className="tnum" style={{ fontSize:size, fontWeight:500, lineHeight:0.95, letterSpacing:'-0.045em', display:'inline-block' }}>
+        <RollingNumber value={value} format={v => {
+          const h = Math.floor(v);
+          const f = Math.round((v - h) * 10);
+          if (f === 0) return `${h}`;
+          return <>{h}<span style={{ color:'var(--ink-3)' }}>.{f}</span></>;
+        }} />
+      </span>
+    );
+  }
+
+  function Num({ value, format, size = 22, weight = 500 }) {
+    return (
+      <span className="tnum" style={{ fontSize:size, fontWeight:weight, letterSpacing:'-0.02em' }}>
+        <RollingNumber value={value} format={format} />
+      </span>
+    );
+  }
+
+  function Progress({ value, max, color = 'var(--ink)' }) {
+    const pct = Math.min(1, Math.max(0, max > 0 ? value / max : 0));
+    return (
+      <div style={{ position:'relative', height:4, background:'var(--line)', borderRadius:99 }}>
+        <div style={{ position:'absolute', left:0, top:0, bottom:0, width:`${pct*100}%`, background:color, borderRadius:99, transition:'width 0.9s var(--spring)' }} />
+      </div>
+    );
+  }
+
+  function StatLine({ label, value, hint, accent, delay = 0, last = false }) {
+    return (
+      <div className="fade-up" style={{ animationDelay:`${delay}s`, display:'flex', alignItems:'baseline', padding:'14px 0', borderBottom: last ? 'none' : '1px solid var(--line)' }}>
+        <span style={{ fontSize:14, color:'var(--ink-2)' }}>{label}</span>
+        <span style={{ flex:1 }} />
+        {hint && <span style={{ fontSize:12, color:'var(--ink-3)', marginRight:10 }} className="tnum">{hint}</span>}
+        <span className="tnum" style={{ fontSize:15, fontWeight:500, color:accent||'var(--ink)', letterSpacing:'-0.01em' }}>{value}</span>
+      </div>
+    );
+  }
+
+  function SparkBars({ values, max, height = 44, accentIdx = null }) {
+    const m = max || Math.max(...values, 1);
+    return (
+      <div style={{ display:'flex', alignItems:'flex-end', gap:4, height }}>
+        {values.map((v,i) => (
+          <div key={i} style={{ flex:1, position:'relative', height:'100%', display:'flex', alignItems:'flex-end' }}>
+            <div style={{
+              width:'100%', height:`${Math.max(2,(v/m)*100)}%`, borderRadius:2,
+              background: i === accentIdx ? 'var(--accent)' : (v === 0 ? 'var(--line-2)' : 'var(--ink)'),
+              transformOrigin:'bottom',
+              animation:`fadeUp 0.5s ${0.03*i+0.2}s var(--spring) both`,
+            }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function TabBar({ tabs, active, onChange }) {
+    const refs = useRef({});
+    const [ind, setInd] = useState({ left:0, width:0 });
+    useLayoutEffect(() => {
+      const el = refs.current[active];
+      if (el) {
+        const pr = el.parentElement.getBoundingClientRect();
+        const label = el.querySelector('.tab-label');
+        if (label) {
+          const tr = label.getBoundingClientRect();
+          setInd({ left: tr.left - pr.left, width: tr.width });
+        }
+      }
+    }, [active]);
+    return (
+      <div className="tabbar">
+        <div className="tab-indicator" style={ind} />
+        {tabs.map(t => (
+          <button key={t.id} ref={el => (refs.current[t.id] = el)}
+            className="tab" aria-current={active === t.id} onClick={() => onChange(t.id)}>
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  function TopBar({ title, kicker, right }) {
+    return (
+      <div className="topbar">
+        <div className="topbar-title">
+          {kicker && <div className="kicker fade-up" style={{ marginBottom:4 }}>{kicker}</div>}
+          <div className="label-lg fade-up" style={{ animationDelay:'0.04s' }}>{title}</div>
+        </div>
+        <div className="topbar-actions">{right}</div>
+      </div>
+    );
+  }
+
+  /* ─── Icons ──────────────────────────────── */
+  function TabHeuteIcon({ size=22 }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+    );
+  }
+  function TabKalenderIcon({ size=22 }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <path d="M16 2v4M8 2v4M3 10h18"/>
+      </svg>
+    );
+  }
+  function TabBerichtIcon({ size=22 }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/>
+        <path d="M14 2v5h5M9 13h6M9 17h4"/>
+      </svg>
+    );
+  }
+  function TabSettingsIcon({ size=22 }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    );
+  }
+  function ShareIcon({ size=17 }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 16V3M8 7l4-4 4 4"/>
+        <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>
+      </svg>
+    );
+  }
+  function CopyIcon({ size=16 }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="9" y="9" width="12" height="12" rx="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+    );
+  }
+  function Chevron({ dir = 'right', size = 14, color = 'currentColor', stroke = 1.6 }) {
+    const rotate = { right:0, left:180, up:-90, down:90 }[dir] || 0;
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" style={{ transform:`rotate(${rotate}deg)`, display:'block' }}>
+        <path d="M6 4l4 4-4 4" stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+  }
+  function PlusIcon({ size = 18, color = 'currentColor' }) {
+    return <svg width={size} height={size} viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>;
+  }
+  function MinusIcon({ size = 18, color = 'currentColor' }) {
+    return <svg width={size} height={size} viewBox="0 0 16 16"><path d="M3 8h10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/></svg>;
+  }
+
+  function Toggle({ value, onChange }) {
+    return <button type="button" className="toggle" aria-checked={value} onClick={() => onChange(!value)} />;
+  }
+
+  function Stepper({ value, onChange, step = 1, min = -Infinity, max = Infinity, decimals = 0, suffix, width = 64 }) {
+    const [editing, setEditing] = useState(false);
+    const [raw, setRaw] = useState('');
+
+    function startEdit() { setRaw(value.toFixed(decimals)); setEditing(true); }
+    function commitEdit() {
+      const parsed = parseFloat(raw.replace(',', '.'));
+      if (!isNaN(parsed)) onChange(Math.min(max, Math.max(min, +parsed.toFixed(decimals))));
+      setEditing(false);
+    }
+    function onKey(e) {
+      if (e.key === 'Enter') e.target.blur();
+      if (e.key === 'Escape') setEditing(false);
+    }
+
+    return (
+      <div style={{ display:'inline-flex', alignItems:'center', gap:4 }}>
+        <button type="button" className="btn-icon btn" style={{ width:30, height:30 }}
+          onClick={() => onChange(Math.max(min, +(value - step).toFixed(decimals+2)))}><MinusIcon size={14}/></button>
+        {editing ? (
+          <input autoFocus type="text" inputMode="decimal" value={raw}
+            onChange={e => setRaw(e.target.value.replace(/[^0-9.,\-]/g,''))}
+            onBlur={commitEdit} onKeyDown={onKey}
+            style={{ width, textAlign:'center', fontSize:16, fontWeight:500, letterSpacing:'-0.01em',
+              border:'none', borderBottom:'1.5px solid var(--ink)', background:'transparent',
+              outline:'none', fontFamily:'inherit', color:'var(--ink)', padding:'2px 0' }}/>
+        ) : (
+          <span className="tnum" onClick={startEdit} style={{ minWidth:width, textAlign:'center', fontSize:16, fontWeight:500, letterSpacing:'-0.01em', cursor:'text' }}>
+            {value.toFixed(decimals)}{suffix ? <span style={{ color:'var(--ink-3)', marginLeft:2 }}>{suffix}</span> : null}
+          </span>
+        )}
+        <button type="button" className="btn-icon btn" style={{ width:30, height:30 }}
+          onClick={() => onChange(Math.min(max, +(value + step).toFixed(decimals+2)))}><PlusIcon size={14}/></button>
+      </div>
+    );
+  }
+
+  function Segmented({ options, value, onChange }) {
+    return (
+      <div style={{ display:'inline-flex', background:'var(--line)', borderRadius:8, padding:2 }}>
+        {options.map(o => (
+          <button key={o.value !== undefined ? o.value : o} type="button"
+            onClick={() => onChange(o.value !== undefined ? o.value : o)}
+            style={{
+              appearance:'none', border:'none', cursor:'pointer',
+              padding:'4px 10px', borderRadius:6,
+              background: (o.value !== undefined ? o.value : o) === value ? 'var(--surface)' : 'transparent',
+              color: (o.value !== undefined ? o.value : o) === value ? 'var(--ink)' : 'var(--ink-3)',
+              fontFamily:'inherit', fontSize:12, fontWeight:500,
+              boxShadow: (o.value !== undefined ? o.value : o) === value ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+              transition:'all 0.2s var(--tap)',
+            }}>{o.label !== undefined ? o.label : o}</button>
+        ))}
+      </div>
+    );
+  }
+
+  function SRow({ label, sub, right, onClick, chevron, danger }) {
+    return (
+      <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 0', cursor:onClick?'pointer':'default', borderBottom:'1px solid var(--line)' }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:14, fontWeight:500, color:danger?'var(--negative)':'var(--ink)', letterSpacing:'-0.01em' }}>{label}</div>
+          {sub && <div style={{ fontSize:12, color:'var(--ink-3)', marginTop:2 }}>{sub}</div>}
+        </div>
+        {right}
+        {chevron && <Chevron color="var(--ink-3)"/>}
+      </div>
+    );
+  }
+
+  function SettingsGroup({ label, delay = 0, children }) {
+    return (
+      <div className="fade-up" style={{ animationDelay:`${delay}s`, marginTop:24 }}>
+        <div className="kicker" style={{ marginBottom:10 }}>{label}</div>
+        <div className="card" style={{ padding:'4px 16px' }}>{children}</div>
+      </div>
+    );
+  }
+
+  function Toast({ label, actionLabel, onAction }) {
+    return (
+      <div style={{
+        position:'absolute', bottom:'calc(env(safe-area-inset-bottom, 20px) + 80px)',
+        left:16, right:16, zIndex:60,
+        background:'var(--ink)', color:'var(--bg)',
+        borderRadius:12, padding:'12px 16px',
+        display:'flex', alignItems:'center', gap:12,
+        animation:'fadeUp 0.35s var(--spring) both',
+        boxShadow:'0 4px 24px rgba(0,0,0,0.22)',
+      }}>
+        <span style={{ flex:1, fontSize:13, fontWeight:500, letterSpacing:'-0.01em' }}>{label}</span>
+        {actionLabel && (
+          <button onClick={onAction} style={{
+            appearance:'none', border:'none', cursor:'pointer',
+            background:'rgba(255,255,255,0.14)', color:'var(--bg)',
+            padding:'6px 14px', borderRadius:8, fontSize:13, fontWeight:600,
+            fontFamily:'inherit', letterSpacing:'-0.01em',
+          }}>{actionLabel}</button>
+        )}
+      </div>
+    );
+  }
+
+  /** Farbiger Balken aus Segmenten – ein Segment pro Lektion */
+  function ItemBar({ items, height = 3, radius = 99 }) {
+    const total = items.reduce((s,it) => s + (Number(it.hours)||0), 0) || 1;
+    return (
+      <div style={{ display:'flex', gap:1.5, height, borderRadius:radius, overflow:'hidden' }}>
+        {items.map((it, i) => (
+          <div key={it.id || i} style={{
+            flex: (Number(it.hours)||0) / total,
+            background: itemColor(it),
+            borderRadius: radius,
+          }} />
+        ))}
+      </div>
+    );
+  }
+
+  /** Klassenwähler – gruppiert, Chips zum An-/Abwählen */
+  function LevelPicker({ selected, onToggle, activeLevels }) {
+    const [showAll, setShowAll] = useState(false);
+    const visible = showAll ? ALL_LEVEL_IDS : activeLevels;
+    const hidden  = ALL_LEVEL_IDS.length - activeLevels.length;
+
+    return (
+      <div>
+        {GROUPS.map(g => {
+          const levels = LEVELS.filter(l => l.group === g.id && (visible.includes(l.id) || selected.includes(l.id)));
+          if (!levels.length) return null;
+          return (
+            <div key={g.id} style={{ marginBottom:10 }}>
+              <div style={{ fontSize:10.5, fontWeight:500, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ width:6, height:6, borderRadius:99, background:g.color, display:'inline-block' }}/>
+                {g.name}
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns: g.single ? '1fr' : 'repeat(3,1fr)', gap:6 }}>
+                {levels.map(l => {
+                  const on = selected.includes(l.id);
+                  return (
+                    <button key={l.id} type="button" className="chip" aria-pressed={on}
+                      onClick={() => onToggle(l.id)}
+                      style={on ? { background: hexToRgba(l.color, Math.max(0.75, l.alpha)) } : null}>
+                      {l.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {hidden > 0 && !showAll && (
+          <button className="btn btn-ghost" style={{ padding:'6px 0', fontSize:12 }} onClick={() => setShowAll(true)}>
+            {hidden} ausgeblendete {hidden === 1 ? 'Klasse' : 'Klassen'} anzeigen
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     HEUTE
+  ═══════════════════════════════════════════ */
+  function TodayScreen({ state, onOpenDay, onQuickAdd }) {
+    const today = state.today;
+    const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+    const tk = dateKey(y, m, d);
+    const entry = state.entries[tk];
+    const items = entryItems(entry);
+    const hoursToday = entryHours(entry);
+
+    const mDays  = daysInRange(state.entries, y, m);
+    const mTotal = mDays.reduce((s,x) => s + x.hours, 0);
+    const mLess  = mDays.reduce((s,x) => s + x.items.length, 0);
+
+    const wd0 = today.getDay();
+    const daysFromMon = wd0 === 0 ? 6 : wd0 - 1;
+    const monday = new Date(y, m, d - daysFromMon);
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      weekDays.push({ d:dt, h:entryHours(state.entries[dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate())]), future: dt > today });
+    }
+    const week = weekDays.filter(x => !x.future).reduce((s,x) => s + x.h, 0);
+    const dateStr = `${DE_WD_FULL[today.getDay()]}, ${today.getDate()}. ${DE_MONTHS_FULL[today.getMonth()]}`;
+    const selected = items.filter(it => it.level).map(it => it.level);
+
+    return (
+      <div className="screen screen-enter">
+        <TopBar kicker="Heute" title={dateStr} />
+        <div className="scroll" style={{ padding:'0 22px 24px' }}>
+          {/* Hero */}
+          <div style={{ marginTop:28, marginBottom:22 }}>
+            <div className="fade-up" style={{ animationDelay:'0.08s', display:'flex', alignItems:'flex-end', gap:10 }}>
+              <HeroHours value={hoursToday} />
+              <span style={{ fontSize:20, fontWeight:500, color:'var(--ink-3)', letterSpacing:'-0.02em', marginBottom:16 }}>Std.</span>
+            </div>
+            <div className="fade-up" style={{ animationDelay:'0.14s', marginTop:4, fontSize:14, color:'var(--ink-2)' }}>
+              {items.length === 0
+                ? <>Noch nichts erfasst</>
+                : <>{items.length} {items.length === 1 ? 'Lektion' : 'Lektionen'} heute</>}
+            </div>
+          </div>
+
+          {items.length > 0 && (
+            <div className="fade-up" style={{ animationDelay:'0.18s', marginBottom:20 }}>
+              <ItemBar items={items} height={4}/>
+            </div>
+          )}
+
+          {/* Heutige Lektionen */}
+          <div className="fade-up" style={{ animationDelay:'0.22s' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
+              <span className="kicker">Klassen heute</span>
+              <button className="btn btn-ghost" style={{ padding:'4px 0', fontSize:12, color:'var(--accent)' }} onClick={() => onOpenDay(tk)}>
+                Bearbeiten
+              </button>
+            </div>
+            {items.length === 0 ? (
+              <div onClick={() => onOpenDay(tk)} style={{ fontSize:13, color:'var(--ink-3)', padding:'14px 0', cursor:'pointer' }}>
+                Tippe unten auf eine Klasse oder auf «Bearbeiten».
+              </div>
+            ) : (
+              <div>
+                {items.map(it => (
+                  <div key={it.id} onClick={() => onOpenDay(tk)} className="row-tap" style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 8px', borderBottom:'1px solid var(--line)', cursor:'pointer' }}>
+                    <span style={{ width:8, height:8, borderRadius:99, background:itemColor(it), flexShrink:0 }}/>
+                    <span style={{ flex:1, fontSize:14, fontWeight:500, letterSpacing:'-0.01em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{itemLabel(it)}</span>
+                    <span className="tnum" style={{ fontSize:13, color:'var(--ink-2)' }}>{fmtHours(it.hours)} h</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Schnellwahl */}
+          <div className="fade-up" style={{ animationDelay:'0.3s', marginTop:26 }}>
+            <div className="kicker" style={{ marginBottom:10 }}>Schnell eintragen</div>
+            <LevelPicker
+              selected={selected}
+              activeLevels={state.settings.activeLevels}
+              onToggle={lv => onQuickAdd(tk, lv)}
+            />
+          </div>
+
+          {/* Woche */}
+          <div className="fade-up" style={{ animationDelay:'0.36s', marginTop:30 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:14 }}>
+              <span className="kicker">Diese Woche</span>
+              <span className="tnum muted-2" style={{ fontSize:12, fontWeight:500 }}>{fmtHours(week)} h</span>
+            </div>
+            <SparkBars
+              values={weekDays.map(x => x.future ? 0 : x.h)}
+              max={Math.max(...weekDays.filter(x => !x.future).map(x => x.h), 3)}
+              height={48} accentIdx={daysFromMon}
+            />
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop:8, fontSize:10, fontWeight:500 }}>
+              {weekDays.map((x,i) => (
+                <span key={i} style={{ flex:1, textAlign:'center', color: i === daysFromMon ? 'var(--ink)' : (x.future ? 'var(--ink-4)' : 'var(--ink-3)') }}>
+                  {DE_WD_SHORT[x.d.getDay()]}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Monat */}
+          <div style={{ marginTop:34 }}>
+            <div className="kicker fade-up" style={{ animationDelay:'0.42s', marginBottom:6 }}>
+              {DE_MONTHS_FULL[m]} {y}
+            </div>
+            <StatLine delay={0.46} label="Stunden"   value={<><Num value={mTotal} format={fmtHours} size={15}/> h</>}/>
+            <StatLine delay={0.49} label="Tage"      value={<Num value={mDays.length} format={v => Math.round(v).toString()} size={15}/>}/>
+            <StatLine delay={0.52} label="Lektionen" value={<Num value={mLess} format={v => Math.round(v).toString()} size={15}/>} last={!state.settings.showMoney}/>
+            {state.settings.showMoney && (
+              <StatLine delay={0.55} last label="Verdienst" value={<><Num value={mTotal * state.settings.rate} format={fmtMoney} size={15}/> {state.settings.currency}</>}/>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     KALENDER
+  ═══════════════════════════════════════════ */
+  function YearSpark({ entries, y, m, onPick }) {
+    const months = Array.from({length:12}, (_,i) => ({ i, h: rangeTotal(entries, y, i) }));
+    const max = Math.max(...months.map(x => x.h), 1);
+    return (
+      <div>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:4, height:48 }}>
+          {months.map(({ i, h }) => (
+            <div key={i} onClick={() => onPick(i)} style={{ flex:1, cursor:'pointer', display:'flex', alignItems:'flex-end', height:'100%' }}>
+              <div style={{
+                width:'100%', height:`${Math.max(2,(h/max)*100)}%`,
+                background: i === m ? 'var(--accent)' : (h === 0 ? 'var(--line-2)' : 'var(--ink-2)'),
+                borderRadius:2,
+                animation:`fadeUp 0.4s ${0.02*i+0.4}s var(--spring) both`,
+                transition:'background 0.2s var(--tap)',
+              }}/>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:8, fontSize:10, fontWeight:500, color:'var(--ink-3)' }}>
+          {months.map(({ i }) => (
+            <span key={i} style={{ flex:1, textAlign:'center', color: i === m ? 'var(--accent)' : 'var(--ink-3)' }}>
+              {DE_MONTHS_ABBR[i].charAt(0)}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function CalendarScreen({ state, onOpenDay, onDeleteEntry }) {
+    const [view, setView] = useState({ y:state.today.getFullYear(), m:state.today.getMonth() });
+    const { y, m } = view;
+    const dim = daysInMonth(y, m);
+    const firstWeekday = (new Date(y, m, 1).getDay() + 6) % 7;
+    const todayKey = dateKey(state.today.getFullYear(), state.today.getMonth(), state.today.getDate());
+
+    function go(dir) {
+      setView(v => {
+        let nm = v.m + dir, ny = v.y;
+        if (nm < 0) { nm = 11; ny--; } else if (nm > 11) { nm = 0; ny++; }
+        return { y:ny, m:nm };
+      });
+    }
+
+    const cells = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push(null);
+    for (let d = 1; d <= dim; d++) cells.push(d);
+    while (cells.length % 7) cells.push(null);
+
+    const monthDays = daysInRange(state.entries, y, m);
+    const mTotal  = monthDays.reduce((s,x) => s + x.hours, 0);
+    const maxDay  = Math.max(...monthDays.map(x => x.hours), 3);
+    const lessons = monthDays.reduce((s,x) => s + x.items.length, 0);
+
+    return (
+      <div className="screen screen-enter">
+        <div className="topbar">
+          <div style={{ flex:1 }}>
+            <div className="kicker fade-up" style={{ marginBottom:6 }}>Anno {y}</div>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div className="label-lg fade-up" style={{ animationDelay:'0.04s' }}>{DE_MONTHS_FULL[m]}</div>
+              <div style={{ display:'flex', gap:6 }}>
+                <button className="btn btn-icon" style={{ width:44, height:44 }} onClick={() => go(-1)}><Chevron dir="left" size={20}/></button>
+                <button className="btn btn-icon" style={{ width:44, height:44 }} onClick={() => go(1)}><Chevron dir="right" size={20}/></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="scroll" style={{ padding:'0 16px 24px' }}>
+          {/* Summary */}
+          <div className="fade-up" style={{ padding:'0 6px 18px' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:18 }}>
+              <div>
+                <div className="kicker">Stunden</div>
+                <div style={{ marginTop:2 }}>
+                  <Num value={mTotal} format={fmtHours} size={26}/>
+                  <span style={{ color:'var(--ink-3)', fontSize:14, marginLeft:4 }}>h</span>
+                </div>
+              </div>
+              <div style={{ flex:1 }}/>
+              <div style={{ textAlign:'right' }}>
+                <div className="kicker">{state.settings.showMoney ? 'Verdienst' : 'Lektionen'}</div>
+                <div style={{ marginTop:2 }}>
+                  {state.settings.showMoney ? (
+                    <>
+                      <Num value={mTotal * state.settings.rate} format={fmtMoney} size={26}/>
+                      <span style={{ color:'var(--ink-3)', fontSize:14, marginLeft:4 }}>{state.settings.currency}</span>
+                    </>
+                  ) : (
+                    <Num value={lessons} format={v => Math.round(v).toString()} size={26}/>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Weekday legend */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', padding:'8px 6px 6px', fontSize:10, fontWeight:500, color:'var(--ink-3)', textAlign:'center', letterSpacing:'0.05em', textTransform:'uppercase' }}>
+            {['Mo','Di','Mi','Do','Fr','Sa','So'].map(w => <div key={w}>{w}</div>)}
+          </div>
+
+          {/* Grid */}
+          <div key={`${y}-${m}`} style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)' }}>
+            {cells.map((d,i) => {
+              if (d === null) return <div key={i} className="cal-cell"/>;
+              const dt  = new Date(y, m, d);
+              const k   = dateKey(y, m, d);
+              const items = entryItems(state.entries[k]);
+              const hrs = entryHours(state.entries[k]);
+              const isToday  = k === todayKey;
+              const isFuture = dt > state.today;
+              return (
+                <div key={i} className="cal-cell scale-in" style={{ animationDelay:`${0.01*i+0.05}s` }} onClick={() => onOpenDay(k)}>
+                  <div style={{ position:'relative', display:'inline-flex', width:32, height:32, alignItems:'center', justifyContent:'center', borderRadius:999, border:isToday?'1.5px solid var(--accent)':'none', marginBottom:4 }}>
+                    <span className="tnum" style={{ fontSize:15, fontWeight:isToday?600:400, color: isFuture ? 'var(--ink-4)' : (isToday ? 'var(--accent)' : 'var(--ink)'), letterSpacing:'-0.01em' }}>{d}</span>
+                  </div>
+                  <div style={{ margin:'0 7px', height:3 }}>
+                    {items.length > 0 ? (
+                      <div style={{ transformOrigin:'left', animation:`hairFromCenter 0.5s ${0.01*i+0.3}s var(--spring) both`, width:`${Math.max(30, Math.min(100, (hrs/maxDay)*100))}%` }}>
+                        <ItemBar items={items}/>
+                      </div>
+                    ) : (
+                      <div style={{ height:3, background:'var(--line)', borderRadius:99, opacity:isFuture?0.4:1 }}/>
+                    )}
+                  </div>
+                  <div className="tnum" style={{ marginTop:4, fontSize:9, fontWeight:500, color:hrs>0?'var(--ink-3)':'transparent', minHeight:11 }}>
+                    {hrs > 0 ? fmtHours(hrs) : '·'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Year spark */}
+          <div className="fade-up" style={{ animationDelay:'0.4s', marginTop:28, padding:'0 6px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12 }}>
+              <span className="kicker">Im Verlauf · {y}</span>
+              <span className="tnum muted" style={{ fontSize:11, fontWeight:500 }}>{fmtHours(rangeTotal(state.entries, y, null))} h</span>
+            </div>
+            <YearSpark entries={state.entries} y={y} m={m} onPick={mi => setView({ y, m:mi })}/>
+          </div>
+
+          {/* Einträge */}
+          <div className="fade-up" style={{ animationDelay:'0.5s', marginTop:32, padding:'0 6px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:10 }}>
+              <span className="kicker">Einträge · {DE_MONTHS_ABBR[m]}</span>
+              <span className="tnum muted" style={{ fontSize:11, fontWeight:500 }}>{monthDays.length} {monthDays.length === 1 ? 'Tag' : 'Tage'}</span>
+            </div>
+            {monthDays.length === 0 ? (
+              <div style={{ fontSize:13, color:'var(--ink-3)', textAlign:'center', padding:'18px 0' }}>Keine Einträge</div>
+            ) : (
+              <div className="card" style={{ overflow:'hidden' }}>
+                {monthDays.slice().reverse().map(({ key:k, date, items, hours }) => (
+                  <div key={k} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderBottom:'1px solid var(--line)', cursor:'pointer' }}
+                    onClick={() => onOpenDay(k)}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'baseline', gap:8 }}>
+                        <span style={{ fontSize:14, fontWeight:500, letterSpacing:'-0.01em' }}>
+                          {DE_WD_SHORT[date.getDay()]}., {date.getDate()}. {DE_MONTHS_ABBR[date.getMonth()]}
+                        </span>
+                        <span className="tnum" style={{ fontSize:12, color:'var(--ink-2)' }}>{fmtHours(hours)} h</span>
+                      </div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginTop:5 }}>
+                        {items.map(it => (
+                          <span key={it.id} style={{
+                            fontSize:11, fontWeight:500, padding:'2px 7px', borderRadius:99,
+                            background: it.level ? hexToRgba(LEVEL_MAP[it.level].color, 0.12) : 'var(--line)',
+                            color: it.level ? hexToRgba(LEVEL_MAP[it.level].color, 1) : 'var(--ink-2)',
+                            maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                          }}>{itemLabel(it)}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <button className="entry-del" onClick={e => { e.stopPropagation(); onDeleteEntry(k); }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     TAGES-EDITOR (BOTTOM SHEET)
+  ═══════════════════════════════════════════ */
+  function DayEditor({ state, onSave, dateKey: dk, onClose }) {
+    const date = parseKey(dk);
+    const todayK = dateKey(state.today.getFullYear(), state.today.getMonth(), state.today.getDate());
+    const s = state.settings;
+
+    const [items, setItems] = useState(() => entryItems(state.entries[dk]).map(it => ({ ...it })));
+    const [note, setNote]   = useState(() => (state.entries[dk] && state.entries[dk].note) || '');
+
+    const total    = items.reduce((acc,it) => acc + (Number(it.hours)||0), 0);
+    const selected = items.filter(it => it.level).map(it => it.level);
+
+    function toggleLevel(lv) {
+      setItems(list => list.some(it => it.level === lv)
+        ? list.filter(it => it.level !== lv)
+        : [...list, { id:newId(), level:lv, hours:s.defaultHours }]);
+    }
+    function setHours(id, h) {
+      setItems(list => list.map(it => it.id === id ? { ...it, hours:h } : it));
+    }
+    function setCustom(id, text) {
+      setItems(list => list.map(it => it.id === id ? { ...it, custom:text } : it));
+    }
+    function removeItem(id) { setItems(list => list.filter(it => it.id !== id)); }
+    function addCustom() {
+      setItems(list => [...list, { id:newId(), custom:'', hours:s.defaultHours }]);
+    }
+
+    function save() {
+      const clean = items
+        .filter(it => (Number(it.hours) || 0) > 0)
+        .map(it => it.level
+          ? { id:it.id, level:it.level, hours:+Number(it.hours).toFixed(2) }
+          : { id:it.id, custom:(it.custom || '').trim() || 'Extra', hours:+Number(it.hours).toFixed(2) });
+
+      const entries = { ...state.entries };
+      const existed = state.entries[dk] !== undefined;
+      if (clean.length || note.trim()) {
+        entries[dk] = { items:clean, note:note.trim() };
+        if (!clean.length) delete entries[dk];
+      } else {
+        delete entries[dk];
+      }
+      const label = !clean.length && existed ? 'Eintrag gelöscht' : 'Eintrag gespeichert';
+      onSave(entries, label);
+      onClose();
+    }
+
+    const isToday = dk === todayK;
+    const dateLabel = `${DE_WD_FULL[date.getDay()]}, ${date.getDate()}. ${DE_MONTHS_FULL[date.getMonth()]}`;
+
+    return (
+      <>
+        <div className="sheet-backdrop" onClick={onClose}/>
+        <div className="sheet">
+          <div className="sheet-handle"/>
+          <div style={{ padding:'14px 22px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid var(--line)', flexShrink:0 }}>
+            <button className="btn btn-ghost" onClick={onClose} style={{ padding:'6px 0', fontSize:14 }}>Abbrechen</button>
+            <div className="kicker" style={{ textAlign:'center', flex:1 }}>{isToday ? 'Heute' : 'Eintrag'}</div>
+            <button className="btn" onClick={save} style={{ padding:'6px 0', fontSize:14, fontWeight:600, color:'var(--accent)' }}>Fertig</button>
+          </div>
+
+          <div className="scroll" style={{ padding:'22px 22px 28px' }}>
+            <div className="fade-up" style={{ marginBottom:20 }}>
+              <div className="label-lg">{dateLabel}</div>
+            </div>
+
+            {/* Hero */}
+            <div className="fade-up" style={{ animationDelay:'0.06s', marginBottom:22 }}>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:8 }}>
+                <HeroHours value={total} size={72}/>
+                <span style={{ fontSize:14, color:'var(--ink-3)', marginBottom:8 }}>Std. gesamt</span>
+              </div>
+              {total > 0 && (
+                <div className="tnum" style={{ fontSize:13, color:'var(--ink-2)', marginTop:6 }}>
+                  {items.length} {items.length === 1 ? 'Lektion' : 'Lektionen'}
+                  {s.showMoney && s.rate > 0 && <> · {fmtMoney(total * s.rate)} {s.currency}</>}
+                </div>
+              )}
+            </div>
+
+            {/* Positionen */}
+            {items.length > 0 && (
+              <div className="fade-up" style={{ animationDelay:'0.1s', marginBottom:22 }}>
+                <div className="kicker" style={{ marginBottom:8 }}>Lektionen</div>
+                {items.map(it => (
+                  <div key={it.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:'1px solid var(--line)' }}>
+                    <span style={{ width:8, height:8, borderRadius:99, background:itemColor(it), flexShrink:0 }}/>
+                    {it.level ? (
+                      <span style={{ flex:1, fontSize:14, fontWeight:500, letterSpacing:'-0.01em', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {itemLabel(it)}
+                      </span>
+                    ) : (
+                      <input value={it.custom} onChange={e => setCustom(it.id, e.target.value)}
+                        placeholder="z.B. Extra für Bluetoothgeräte"
+                        style={{ flex:1, minWidth:0, border:'none', borderBottom:'1px solid var(--line-2)', background:'transparent',
+                          fontSize:14, fontWeight:500, letterSpacing:'-0.01em', outline:'none', padding:'2px 0', color:'var(--ink)' }}/>
+                    )}
+                    <Stepper value={Number(it.hours)||0} onChange={v => setHours(it.id, v)}
+                      step={0.5} min={0} max={24} decimals={1} suffix=" h" width={52}/>
+                    <button className="entry-del" onClick={() => removeItem(it.id)}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Klassenwahl */}
+            <div className="fade-up" style={{ animationDelay:'0.14s' }}>
+              <div className="kicker" style={{ marginBottom:10 }}>Klassen</div>
+              <LevelPicker selected={selected} activeLevels={s.activeLevels} onToggle={toggleLevel}/>
+            </div>
+
+            <button className="btn btn-soft" onClick={addCustom} style={{ width:'100%', marginTop:14, color:'var(--ink-2)' }}>
+              + Eigener Eintrag
+            </button>
+
+            {/* Notiz */}
+            <div className="fade-up" style={{ animationDelay:'0.18s', marginTop:24 }}>
+              <div className="kicker" style={{ marginBottom:8 }}>Notiz</div>
+              <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+                placeholder="z.B. Vertretung, Raumwechsel …"
+                style={{ width:'100%', resize:'none', background:'transparent', border:'none', outline:'none', fontSize:14, color:'var(--ink)', padding:0, fontFamily:'inherit', lineHeight:1.4 }}/>
+            </div>
+
+            <button onClick={() => { setItems([]); setNote(''); }} className="btn btn-soft" style={{ width:'100%', marginTop:20, color:'var(--ink-2)' }}>
+              Eintrag leeren
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     BERICHT
+  ═══════════════════════════════════════════ */
+  function ReportScreen({ state, setState, onToast }) {
+    const [mode, setMode] = useState('month'); // 'month' | 'year'
+    const [view, setView] = useState({ y:state.today.getFullYear(), m:state.today.getMonth() });
+    const s = state.settings;
+    const [money, setMoney] = useState(s.reportMoney);
+
+    const y = view.y;
+    const m = mode === 'month' ? view.m : null;
+
+    const days    = daysInRange(state.entries, y, m);
+    const total   = days.reduce((acc,d) => acc + d.hours, 0);
+    const lessons = days.reduce((acc,d) => acc + d.items.length, 0);
+    const bd      = levelBreakdown(state.entries, y, m);
+    const maxBd   = Math.max(...bd.map(b => b.hours), 1);
+
+    const opts = { money: money && s.rate > 0, days: s.reportDays, levels: s.reportLevels };
+    const text = useMemo(
+      () => buildReport(state, y, m, opts),
+      [state.entries, state.settings, y, m, money]
+    );
+
+    function go(dir) {
+      if (mode === 'year') { setView(v => ({ ...v, y: v.y + dir })); return; }
+      setView(v => {
+        let nm = v.m + dir, ny = v.y;
+        if (nm < 0) { nm = 11; ny--; } else if (nm > 11) { nm = 0; ny++; }
+        return { y:ny, m:nm };
+      });
+    }
+    const setS = (key, value) => setState(st => ({ ...st, settings:{ ...st.settings, [key]:value } }));
+    const title = mode === 'month' ? DE_MONTHS_FULL[view.m] : String(y);
+
+    return (
+      <div className="screen screen-enter">
+        <div className="topbar">
+          <div style={{ flex:1 }}>
+            <div className="kicker fade-up" style={{ marginBottom:6 }}>
+              Zusammenfassung{mode === 'month' ? ` · ${y}` : ''}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div className="label-lg fade-up" style={{ animationDelay:'0.04s' }}>{title}</div>
+              <div style={{ display:'flex', gap:6 }}>
+                <button className="btn btn-icon" style={{ width:44, height:44 }} onClick={() => go(-1)}><Chevron dir="left" size={20}/></button>
+                <button className="btn btn-icon" style={{ width:44, height:44 }} onClick={() => go(1)}><Chevron dir="right" size={20}/></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="scroll" style={{ padding:'0 22px 28px' }}>
+          <div className="fade-up" style={{ marginBottom:20 }}>
+            <Segmented options={[{value:'month',label:'Monat'},{value:'year',label:'Jahr'}]} value={mode} onChange={setMode}/>
+          </div>
+
+          {/* Hero */}
+          <div className="fade-up" style={{ animationDelay:'0.06s', marginBottom:8 }}>
+            <div style={{ display:'flex', alignItems:'flex-end', gap:10 }}>
+              <HeroHours value={total} size={104}/>
+              <span style={{ fontSize:18, fontWeight:500, color:'var(--ink-3)', letterSpacing:'-0.02em', marginBottom:12 }}>Std.</span>
+            </div>
+          </div>
+
+          <div className="fade-up" style={{ animationDelay:'0.1s', marginBottom:24 }}>
+            <StatLine delay={0.12} label="Tage"      value={<Num value={days.length} format={v => Math.round(v).toString()} size={15}/>}/>
+            <StatLine delay={0.15} label="Lektionen" value={<Num value={lessons} format={v => Math.round(v).toString()} size={15}/>}/>
+            <StatLine delay={0.18} label="Ø pro Tag" value={<><Num value={days.length ? total/days.length : 0} format={fmtHours} size={15}/> h</>} last={!(s.showMoney && s.rate > 0)}/>
+            {s.showMoney && s.rate > 0 && (
+              <StatLine delay={0.21} last label="Verdienst" value={<><Num value={total * s.rate} format={fmtMoney} size={15}/> {s.currency}</>}/>
+            )}
+          </div>
+
+          {/* Nach Level */}
+          {bd.length > 0 && (
+            <div className="fade-up" style={{ animationDelay:'0.24s', marginBottom:28 }}>
+              <div className="kicker" style={{ marginBottom:12 }}>Nach Level</div>
+              {bd.map((b,i) => (
+                <div key={b.key} className="fade-up" style={{ animationDelay:`${0.26 + i*0.02}s`, marginBottom:10 }}>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:5 }}>
+                    <span style={{ fontSize:13, fontWeight:500, letterSpacing:'-0.01em', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{b.label}</span>
+                    <span className="tnum" style={{ fontSize:11, color:'var(--ink-3)' }}>{b.count}×</span>
+                    <span className="tnum" style={{ fontSize:13, fontWeight:500 }}>{fmtHours(b.hours)} h</span>
+                  </div>
+                  <div style={{ height:4, background:'var(--line)', borderRadius:99, overflow:'hidden' }}>
+                    <div style={{ width:`${(b.hours/maxBd)*100}%`, height:'100%', background:b.color, borderRadius:99, transition:'width 0.8s var(--spring)' }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Optionen */}
+          <div className="fade-up" style={{ animationDelay:'0.3s' }}>
+            <div className="kicker" style={{ marginBottom:10 }}>Was mitschicken</div>
+            <div className="card" style={{ padding:'4px 16px' }}>
+              <SRow label="Tagesliste" sub="jeder Tag mit Klassen" right={<Toggle value={s.reportDays} onChange={v => setS('reportDays', v)}/>}/>
+              <SRow label="Nach Level" sub="Summe je Klasse" right={<Toggle value={s.reportLevels} onChange={v => setS('reportLevels', v)}/>}/>
+              <SRow label="Verdienst" sub={s.rate > 0 ? `${fmtMoney(s.rate)} ${s.currency} / Std.` : 'kein Stundenlohn gesetzt'}
+                right={<Toggle value={money && s.rate > 0} onChange={v => { setMoney(v); setS('reportMoney', v); }}/>}/>
+            </div>
+          </div>
+
+          {/* Vorschau */}
+          <div className="fade-up" style={{ animationDelay:'0.34s', marginTop:24 }}>
+            <div className="kicker" style={{ marginBottom:10 }}>Vorschau</div>
+            <div className="report-pre">{text}</div>
+          </div>
+
+          {/* Aktionen */}
+          <div className="fade-up" style={{ animationDelay:'0.38s', marginTop:16, display:'flex', gap:10 }}>
+            <button className="btn btn-primary" style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8 }}
+              onClick={() => shareText(text, `Unterricht ${title} ${mode === 'month' ? y : ''}`.trim(), onToast)}>
+              <ShareIcon/> Teilen
+            </button>
+            <button className="btn btn-soft" style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, paddingLeft:16, paddingRight:16 }}
+              onClick={() => copyText(text, onToast)}>
+              <CopyIcon/> Kopieren
+            </button>
+          </div>
+
+          {days.length === 0 && (
+            <div style={{ fontSize:12, color:'var(--ink-3)', textAlign:'center', marginTop:16 }}>
+              In diesem Zeitraum ist noch nichts erfasst.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     EINSTELLUNGEN
+  ═══════════════════════════════════════════ */
+  function SettingsScreen({ state, setState, onToast }) {
+    const s = state.settings;
+    const setS = (key, value) => setState(st => ({ ...st, settings:{ ...st.settings, [key]:value } }));
+
+    function toggleActive(id) {
+      const has = s.activeLevels.includes(id);
+      const next = has ? s.activeLevels.filter(x => x !== id) : [...s.activeLevels, id];
+      setS('activeLevels', ALL_LEVEL_IDS.filter(x => next.includes(x)));
+    }
+    function exportJson() {
+      const data = JSON.stringify({ entries:state.entries, settings:state.settings }, null, 2);
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob([data], { type:'application/json' })),
+        download: `unterricht-${new Date().toISOString().slice(0,10)}.json`,
+      });
+      a.click(); URL.revokeObjectURL(a.href);
+    }
+    function importJson() {
+      const inp = Object.assign(document.createElement('input'), { type:'file', accept:'.json,application/json' });
+      inp.onchange = () => {
+        const file = inp.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (!confirm('Sicherung laden? Überschreibt aktuelle Daten.')) return;
+            setState(st => ({
+              ...st,
+              entries:  data.entries || st.entries,
+              settings: data.settings ? { ...DEFAULT_SETTINGS, ...data.settings } : st.settings,
+            }));
+            onToast('Sicherung geladen');
+          } catch { alert('Fehler beim Import'); }
+        };
+        reader.readAsText(file);
+      };
+      inp.click();
+    }
+    function resetData() {
+      if (confirm('Alle Einträge löschen?')) setState(st => ({ ...st, entries:{} }));
+    }
+    function loadDemo() {
+      if (confirm('Beispieldaten laden? Ersetzt alle aktuellen Einträge.')) {
+        setState(st => ({ ...st, entries: generateDemoData(st.today) }));
+      }
+    }
+
+    return (
+      <div className="screen screen-enter">
+        <TopBar kicker="Setup" title="Einstellungen"/>
+        <div className="scroll" style={{ padding:'0 22px 28px' }}>
+
+          <SettingsGroup label="Lohn" delay={0}>
+            <SRow label="Stundenlohn" right={
+              <Stepper value={s.rate} onChange={v => setS('rate', Math.round(v*100)/100)} step={0.5} min={0} max={999} decimals={2} suffix={` ${s.currency}`} width={78}/>
+            }/>
+            <SRow label="Währung" right={
+              <Segmented options={['CHF','EUR','USD']} value={s.currency} onChange={v => setS('currency', v)}/>
+            }/>
+            <SRow label="Verdienst in der App" sub="Beträge auf Heute, Kalender, Bericht"
+              right={<Toggle value={s.showMoney} onChange={v => setS('showMoney', v)}/>}/>
+          </SettingsGroup>
+
+          <SettingsGroup label="Unterricht" delay={0.04}>
+            <SRow label="Standard pro Klasse" sub="Stunden beim Hinzufügen" right={
+              <Stepper value={s.defaultHours} onChange={v => setS('defaultHours', v)} step={0.5} min={0.5} max={8} decimals={1} suffix=" h" width={52}/>
+            }/>
+          </SettingsGroup>
+
+          <div className="fade-up" style={{ animationDelay:'0.06s', marginTop:24 }}>
+            <div className="kicker" style={{ marginBottom:4 }}>Meine Klassen</div>
+            <div style={{ fontSize:12, color:'var(--ink-3)', marginBottom:10 }}>
+              Ausgeschaltete Klassen sind im Schnellwähler versteckt (weiterhin über «ausgeblendete Klassen anzeigen» erreichbar).
+            </div>
+            <div className="card" style={{ padding:16 }}>
+              {GROUPS.map(g => (
+                <div key={g.id} style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:10.5, fontWeight:500, letterSpacing:'0.05em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ width:6, height:6, borderRadius:99, background:g.color, display:'inline-block' }}/>
+                    {g.name}
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns: g.single ? '1fr' : 'repeat(3,1fr)', gap:6 }}>
+                    {LEVELS.filter(l => l.group === g.id).map(l => {
+                      const on = s.activeLevels.includes(l.id);
+                      return (
+                        <button key={l.id} type="button" className="chip" aria-pressed={on}
+                          onClick={() => toggleActive(l.id)}
+                          style={on ? { background: hexToRgba(l.color, Math.max(0.75, l.alpha)) } : null}>
+                          {l.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <button className="btn btn-ghost" style={{ padding:'6px 0', fontSize:12 }}
+                onClick={() => setS('activeLevels', [...ALL_LEVEL_IDS])}>Alle aktivieren</button>
+            </div>
+          </div>
+
+          <SettingsGroup label="Daten" delay={0.12}>
+            <SRow label="Sicherung herunterladen" sub=".json Export" onClick={exportJson} chevron/>
+            <SRow label="Sicherung laden" sub=".json Import" onClick={importJson} chevron/>
+            <SRow label="Beispieldaten laden" sub="ersetzt aktuelle Einträge" onClick={loadDemo} chevron/>
+            <SRow label="Alles zurücksetzen" danger onClick={resetData} chevron/>
+          </SettingsGroup>
+
+          <div className="fade-up" style={{ animationDelay:'0.22s', textAlign:'center', marginTop:32, fontSize:11, color:'var(--ink-3)', lineHeight:1.7 }}>
+            Alle Daten verbleiben auf diesem Gerät.<br/>Unterricht · Version 1 · {new Date().getFullYear()}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     APP ROOT
+  ═══════════════════════════════════════════ */
+  const TABS = [
+    { id:'heute',    label:'Heute',    icon:<TabHeuteIcon/>    },
+    { id:'kalender', label:'Kalender', icon:<TabKalenderIcon/> },
+    { id:'bericht',  label:'Bericht',  icon:<TabBerichtIcon/>  },
+    { id:'setup',    label:'Setup',    icon:<TabSettingsIcon/> },
+  ];
+
+  function App() {
+    const [tab, setTab]       = useState('heute');
+    const [sheet, setSheet]   = useState(null);
+    const [toast, setToast]   = useState(null); // { label, undo:bool }
+
+    const [state, setState] = useState(() => ({
+      today:    new Date(),
+      entries:  loadEntries(),
+      settings: loadSettings(),
+    }));
+
+    const prevEntriesRef = useRef(null);
+    const toastTimerRef  = useRef(null);
+
+    useEffect(() => { localStorage.setItem(LS_DATA,     JSON.stringify(state.entries));  }, [state.entries]);
+    useEffect(() => { localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); }, [state.settings]);
+
+    useEffect(() => {
+      const check = () => setState(s => {
+        const now = new Date();
+        return now.toDateString() === s.today.toDateString() ? s : { ...s, today: now };
+      });
+      document.addEventListener('visibilitychange', check);
+      const id = setInterval(check, 60000);
+      return () => { document.removeEventListener('visibilitychange', check); clearInterval(id); };
+    }, []);
+
+    function showToast(label, snapshot) {
+      prevEntriesRef.current = snapshot !== undefined ? snapshot : null;
+      setToast({ label, undo: snapshot !== undefined });
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => { setToast(null); prevEntriesRef.current = null; }, 5000);
+    }
+
+    function handleSaveEntry(newEntries, label = 'Eintrag gespeichert') {
+      showToast(label, state.entries);
+      setState(s => ({ ...s, entries:newEntries }));
+    }
+    function handleDeleteEntry(key) {
+      showToast('Eintrag gelöscht', state.entries);
+      setState(s => { const entries = { ...s.entries }; delete entries[key]; return { ...s, entries }; });
+    }
+    function handleQuickAdd(dk, level) {
+      const snapshot = state.entries;
+      const entry    = state.entries[dk];
+      const items    = entryItems(entry).map(it => ({ ...it }));
+      const idx      = items.findIndex(it => it.level === level);
+      const label    = LEVEL_MAP[level] ? LEVEL_MAP[level].label : level;
+      let msg;
+      if (idx >= 0) { items.splice(idx, 1); msg = `${label} entfernt`; }
+      else { items.push({ id:newId(), level, hours:state.settings.defaultHours }); msg = `${label} eingetragen`; }
+
+      const entries = { ...state.entries };
+      if (items.length || (entry && entry.note)) entries[dk] = { items, note:(entry && entry.note) || '' };
+      else delete entries[dk];
+      if (!items.length && !(entry && entry.note)) delete entries[dk];
+
+      showToast(msg, snapshot);
+      setState(s => ({ ...s, entries }));
+    }
+    function doUndo() {
+      if (prevEntriesRef.current !== null) {
+        setState(s => ({ ...s, entries: prevEntriesRef.current }));
+        prevEntriesRef.current = null;
+      }
+      clearTimeout(toastTimerRef.current);
+      setToast(null);
+    }
+
+    return (
+      <div className="app">
+        <div className="screen-wrap">
+          {tab === 'heute'    && <TodayScreen    key="heute"    state={state} onOpenDay={dk => setSheet({ dateKey:dk })} onQuickAdd={handleQuickAdd}/>}
+          {tab === 'kalender' && <CalendarScreen key="kalender" state={state} onOpenDay={dk => setSheet({ dateKey:dk })} onDeleteEntry={handleDeleteEntry}/>}
+          {tab === 'bericht'  && <ReportScreen   key="bericht"  state={state} setState={setState} onToast={msg => showToast(msg)}/>}
+          {tab === 'setup'    && <SettingsScreen key="setup"    state={state} setState={setState} onToast={msg => showToast(msg)}/>}
+        </div>
+
+        <TabBar tabs={TABS} active={tab} onChange={setTab}/>
+
+        {sheet && (
+          <DayEditor state={state} onSave={handleSaveEntry} dateKey={sheet.dateKey} onClose={() => setSheet(null)}/>
+        )}
+
+        {toast && <Toast label={toast.label} actionLabel={toast.undo ? 'Rückgängig' : null} onAction={doUndo}/>}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) { refreshing = true; window.location.reload(); }
+      });
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
