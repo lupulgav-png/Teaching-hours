@@ -1745,6 +1745,7 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
 
     const prevEntriesRef = useRef(null);
     const toastTimerRef  = useRef(null);
+    const entriesRef     = useRef(state.entries); // stets aktueller Stand, auch vor dem Re-Render
 
     useEffect(() => { localStorage.setItem(LS_DATA,     JSON.stringify(state.entries));  }, [state.entries]);
     useEffect(() => { localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); }, [state.settings]);
@@ -1766,20 +1767,28 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
       toastTimerRef.current = setTimeout(() => { setToast(null); prevEntriesRef.current = null; }, 5000);
     }
 
+    /** Schreibt neue Einträge durch — entriesRef bleibt auch bei mehreren
+     *  Taps im selben Render aktuell, sonst überschreiben sie sich. */
+    function applyEntries(entries, label) {
+      showToast(label, entriesRef.current);
+      entriesRef.current = entries;
+      setState(s => ({ ...s, entries }));
+    }
+
     function handleSaveEntry(newEntries, label = 'Eintrag gespeichert') {
-      showToast(label, state.entries);
-      setState(s => ({ ...s, entries:newEntries }));
+      applyEntries(newEntries, label);
     }
     function handleDeleteEntry(key) {
-      showToast('Eintrag gelöscht', state.entries);
-      setState(s => { const entries = { ...s.entries }; delete entries[key]; return { ...s, entries }; });
+      const entries = { ...entriesRef.current };
+      delete entries[key];
+      applyEntries(entries, 'Eintrag gelöscht');
     }
     function handleQuickAdd(dk, level) {
-      const snapshot = state.entries;
-      const entry    = state.entries[dk];
-      const items    = entryItems(entry).map(it => ({ ...it }));
-      const idx      = items.findIndex(it => it.level === level);
-      const label    = LEVEL_MAP[level] ? LEVEL_MAP[level].label : level;
+      const current = entriesRef.current;
+      const entry   = current[dk];
+      const items   = entryItems(entry).map(it => ({ ...it }));
+      const idx     = items.findIndex(it => it.level === level);
+      const label   = LEVEL_MAP[level] ? LEVEL_MAP[level].label : level;
       let msg;
       if (idx >= 0) { items.splice(idx, 1); msg = `${label} entfernt`; }
       else {
@@ -1788,17 +1797,17 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
         msg = time ? `${label} · ${slotShort(time)} Uhr` : `${label} eingetragen`;
       }
 
-      const entries = { ...state.entries };
+      const entries = { ...current };
       if (items.length || (entry && entry.note)) entries[dk] = { items:sortItems(items), note:(entry && entry.note) || '' };
       else delete entries[dk];
-      if (!items.length && !(entry && entry.note)) delete entries[dk];
 
-      showToast(msg, snapshot);
-      setState(s => ({ ...s, entries }));
+      applyEntries(entries, msg);
     }
     function doUndo() {
       if (prevEntriesRef.current !== null) {
-        setState(s => ({ ...s, entries: prevEntriesRef.current }));
+        const restored = prevEntriesRef.current;
+        entriesRef.current = restored;
+        setState(s => ({ ...s, entries: restored }));
         prevEntriesRef.current = null;
       }
       clearTimeout(toastTimerRef.current);
