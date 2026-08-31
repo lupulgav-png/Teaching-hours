@@ -851,6 +851,34 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     );
   }
 
+  /** Haelt ein Element optisch an Ort, waehrend darueber Inhalt waechst
+   *  oder schrumpft. `anchor` an den Scroll-Container und das zu haltende
+   *  Element haengen, `keepAnchored()` vor der Zustandsaenderung aufrufen. */
+  function useScrollAnchor() {
+    const scrollEl = useRef(null);
+    const anchorEl = useRef(null);
+    const topRef   = useRef(null);
+
+    function keepAnchored() {
+      if (anchorEl.current) topRef.current = anchorEl.current.getBoundingClientRect().top;
+    }
+
+    useLayoutEffect(() => {
+      if (topRef.current == null || !anchorEl.current || !scrollEl.current) return;
+      const delta = anchorEl.current.getBoundingClientRect().top - topRef.current;
+      topRef.current = null;
+      if (!delta) return;
+      const el  = scrollEl.current;
+      const max = el.scrollHeight - el.clientHeight;
+      el.scrollTop = Math.max(0, Math.min(max, el.scrollTop + delta));
+    });
+
+    return {
+      anchor: { scroll: scrollEl, target: anchorEl },
+      keepAnchored,
+    };
+  }
+
   function TimeInput({ value, onChange }) {
     function fmt(str) {
       let v = str.replace(/[^0-9:]/g,'');
@@ -1005,11 +1033,12 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     const week = weekDays.filter(x => !x.future).reduce((s,x) => s + x.h, 0);
     const dateStr = `${DE_WD_FULL[today.getDay()]}, ${today.getDate()}. ${DE_MONTHS_FULL[today.getMonth()]}`;
     const selected = items.filter(it => it.level).map(it => it.level);
+    const { anchor, keepAnchored } = useScrollAnchor();
 
     return (
       <div className="screen screen-enter">
         <TopBar kicker="Heute" title={dateStr} />
-        <div className="scroll" style={{ padding:'0 22px 24px' }}>
+        <div ref={anchor.scroll} className="scroll" style={{ padding:'0 22px 24px' }}>
           {/* Hero */}
           <div style={{ marginTop:28, marginBottom:22 }}>
             <div className="fade-up" style={{ animationDelay:'0.08s', display:'flex', alignItems:'flex-end', gap:10 }}>
@@ -1057,13 +1086,13 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
             )}
           </div>
 
-          {/* Schnellwahl */}
-          <div className="fade-up" style={{ animationDelay:'0.3s', marginTop:26 }}>
+          {/* Schnellwahl — bleibt beim Eintragen an Ort (siehe useScrollAnchor) */}
+          <div ref={anchor.target} className="fade-up" style={{ animationDelay:'0.3s', marginTop:26 }}>
             <div className="kicker" style={{ marginBottom:10 }}>Schnell eintragen</div>
             <LevelPicker
               selected={selected}
               activeLevels={state.settings.activeLevels}
-              onToggle={lv => onQuickAdd(tk, lv)}
+              onToggle={lv => { keepAnchored(); onQuickAdd(tk, lv); }}
             />
           </div>
 
@@ -1309,7 +1338,13 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     const total    = items.reduce((acc,it) => acc + (Number(it.hours)||0), 0);
     const selected = items.filter(it => it.level).map(it => it.level);
 
+    // Die Lektionsliste waechst oberhalb der Klassen-Chips. Ohne Ausgleich
+    // rutscht der eben getippte Chip unter dem Finger weg — deshalb halten
+    // wir den Klassen-Block optisch an Ort und lassen die Liste nach oben wachsen.
+    const { anchor, keepAnchored } = useScrollAnchor();
+
     function toggleLevel(lv) {
+      keepAnchored();
       setItems(list => list.some(it => it.level === lv)
         ? list.filter(it => it.level !== lv)
         : sortItems([...list, { id:newId(), level:lv, hours:s.defaultHours, time:nextFreeSlot(list, s.slots) }]));
@@ -1323,8 +1358,12 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
     function setCustom(id, text) {
       setItems(list => list.map(it => it.id === id ? { ...it, custom:text } : it));
     }
-    function removeItem(id) { setItems(list => list.filter(it => it.id !== id)); }
+    function removeItem(id) {
+      keepAnchored();
+      setItems(list => list.filter(it => it.id !== id));
+    }
     function addCustom() {
+      keepAnchored();
       setItems(list => sortItems([...list, { id:newId(), custom:'', hours:s.defaultHours, time:'' }]));
     }
 
@@ -1361,7 +1400,7 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
             <button className="btn" onClick={save} style={{ padding:'6px 0', fontSize:14, fontWeight:600, color:'var(--accent)' }}>Fertig</button>
           </div>
 
-          <div className="scroll" style={{ padding:'22px 22px 28px' }}>
+          <div ref={anchor.scroll} className="scroll" style={{ padding:'22px 22px 28px' }}>
             <div className="fade-up" style={{ marginBottom:20 }}>
               <div className="label-lg">{dateLabel}</div>
             </div>
@@ -1436,8 +1475,8 @@ input, textarea, button, select { font-family: inherit; color: inherit; }
               </div>
             )}
 
-            {/* Klassenwahl */}
-            <div className="fade-up" style={{ animationDelay:'0.14s' }}>
+            {/* Klassenwahl — bleibt beim Eintragen an Ort (siehe useScrollAnchor) */}
+            <div ref={anchor.target} className="fade-up" style={{ animationDelay:'0.14s' }}>
               <div className="kicker" style={{ marginBottom:10 }}>Klassen</div>
               <LevelPicker selected={selected} activeLevels={s.activeLevels} onToggle={toggleLevel}/>
             </div>
