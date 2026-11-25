@@ -194,7 +194,10 @@
     const n = pendingMsgCount();
     $('#tabs').innerHTML = TABS.map(t => `<button class="tab ${ui.tab === t.k ? 'on' : ''}" data-act="tab" data-k="${t.k}">${t.icon}<span>${t.label}</span>${t.k === 'msgs' && n ? `<b class="badge">${n}</b>` : ''}</button>`).join('');
     renderSheet();
+    fitAll(main);
   }
+  function fitAll(root = document) { root.querySelectorAll('.msgtext').forEach(fit); }
+  function fit(t) { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
   function rerender() { render.keepScroll = true; render(); }
 
   function chip(a) {
@@ -558,6 +561,7 @@
     el.innerHTML = `<div class="sheet-bg" data-act="close-sheet"></div><div class="sheet-panel"><div class="sheet-bar"><button class="icon" data-act="close-sheet" aria-label="Schliessen">${I.close}</button></div><div class="sheet-body">${body}</div></div>`;
     if (sheetKeep) el.querySelector('.sheet-body').scrollTop = scroll; sheetKeep = false;
     el.classList.add('open'); document.body.classList.add('sheet-open');
+    fitAll(el);
   }
   let sheetKeep = false;
   function rerenderSheet() { sheetKeep = true; renderSheet(); }
@@ -749,7 +753,7 @@
     if (t.dataset.actInput === 'msg') {
       const a = getAppt(t.dataset.id); const k = t.dataset.kind;
       if (S().msgMode !== 'text') return;
-      a.msg[k] = { text: t.value, sig: P.sigOf(a, k) }; touch(a);
+      a.msg[k] = { text: t.value, sig: P.sigOf(a, k) }; touch(a); fit(t);
       return;
     }
     if (t.id === 'voice') { ui.voice = t.value; }
